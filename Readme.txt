@@ -98,10 +98,12 @@ To perform a clean installation cycle or restore the system:
 ---
 
 ### 📜 Change log
-- V1.0 (2026-01-25): Initial public version.
-- V1.1 (2026-01-29): Updated for 11-model support.
+- V1.3 (2026-07-27): Patched internal `sigfm` Meson build specifications to
+  bypass broken header-only `doctest` linking errors on Debian systems.
 - V1.2 (2026-03-03): Integrated SML Master Builder (V3.4) to handle local
   ZIP archives, prevent build stalls, and implement a single-ask lockfile
   for the Debian installer.
+- V1.1 (2026-01-29): Updated for 11-model support.
+- V1.0 (2026-01-25): Initial public version.
 
 ##################################################################

@@ -4,6 +4,11 @@
 # Developed by Sergio Melas - 2026
 set -e
 
+# Identity Configuration
+export DEBFULLNAME="Sergio Melas"
+export DEBEMAIL="sergiomelas@gmail.com"
+MAINTAINER="${DEBFULLNAME} <${DEBEMAIL}>"
+
 echo "##################################################################"
 echo "#          Building Multi-Model Goodix Debian Package            #"
 echo "##################################################################"
@@ -22,7 +27,7 @@ TEMP_SRC_FLASH="${DIR}/goodix_flash_extracted"
 cd "${DIR}"
 
 # 2. Preparation & Extraction
-sudo apt update && sudo apt install -y build-essential dpkg-dev usbutils unzip meson ninja-build
+sudo apt update && sudo apt install -y build-essential dpkg-dev usbutils unzip meson ninja-build doctest-dev
 sudo rm -rf "$TEMP_SRC_LIB" "$TEMP_SRC_FLASH" "$PKG_ROOT"
 mkdir -p "$TEMP_SRC_LIB" "$TEMP_SRC_FLASH"
 
@@ -34,14 +39,29 @@ MESON_PATH=$(find "$TEMP_SRC_LIB" -name "meson.build" -exec grep -l "project(" {
 cd "$MESON_PATH"
 rm -rf builddir
 
-# Smart Option Checker to prevent "Unknown option" errors
+# Smart Option Checker to prevent "Unknown option" errors dynamically
 OPT="-Dintrospection=false"
 if [ -f "meson_options.txt" ]; then
+    if grep -q "option('tests'" meson_options.txt; then OPT="$OPT -Dtests=false"; fi
     if grep -q "option('docs'" meson_options.txt; then OPT="$OPT -Ddocs=false";
     elif grep -q "option('gtk_doc'" meson_options.txt; then OPT="$OPT -Dgtk_doc=false"; fi
 fi
 
+
+# Clear any lingering configured states before running setup
+rm -rf builddir
+# Fix internal sigfm module forced doctest linkage failures on Debian
+SIGFM_MESON=$(find . -path "*/sigfm/meson.build" | head -n 1)
+if [ -n "$SIGFM_MESON" ] && [ -f "$SIGFM_MESON" ]; then
+    # Neutralize the forced doctest library dependency assignment block
+    sed -i "s/dependency('doctest')/dependency('', required: false)/g" "$SIGFM_MESON"
+    sed -i "s/cc.find_library('doctest')/dependency('', required: false)/g" "$SIGFM_MESON"
+    # Prevent building the sigfm-tests target binary
+    sed -i "/executable('sigfm-tests'/,/^)/d" "$SIGFM_MESON"
+fi
+
 meson setup builddir --prefix=/usr $OPT
+
 DESTDIR="${PKG_ROOT}" ninja -C builddir install
 cd "${DIR}"
 
@@ -64,7 +84,7 @@ Version: ${VERSION}
 Section: libs
 Priority: optional
 Architecture: $(dpkg --print-architecture)
-Maintainer: $(whoami)
+Maintainer: ${MAINTAINER}
 Depends: ${SHLIBS}, python3-crcmod, python3-usb, debconf (>= 0.5), usbutils
 Provides: libfprint-2-2
 Replaces: libfprint-2-2
